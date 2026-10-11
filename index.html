@@ -310,6 +310,7 @@ async function showArea(key) {
   store.set("dp.area", key);
   $("list").innerHTML = `<div class="foot">Loading ${esc(key)}…</div>`;
   AREA = await loadArea(key);
+  clearCone();
   if (areaLayer) map.removeLayer(areaLayer);
   for (const k of Object.keys(layers)) if (layers[k]) map.removeLayer(layers[k]);
   areaLayer = L.layerGroup().addTo(map);
@@ -485,6 +486,7 @@ function popup(p, ll, fit, isSpot) {
   }
   return `<div class="pop">${head}
     <div class="sit"><b>This sit:</b> <span class="tag ${fit.cls}">${esc(fit.txt)}</span> · best wind ${winds} (bedding ${p.bedding_dir || "?"})</div>
+    ${p.shot ? `<div><span class="k">Likely shot</span> <b>${esc(p.shot.dir)}</b> · ~${p.shot.dist_yd} yd${p.shot.warn.length ? ` <span class="warn">· check backstop</span>` : ""}</div>` : ""}
     ${walk}<ul>${(p.reasons || []).map(r => `<li>${esc(r)}</li>`).join("")}</ul>
     ${p.thermal ? `<div class="k">${esc(p.thermal)}</div>` : ""}
     ${(p.cautions || []).map(c => `<div class="warn">⚠ ${esc(c)}</div>`).join("")}
@@ -502,6 +504,28 @@ function tags(p) {
   const terrain = t.filter(x => !/travel|corridor/i.test(x));
   return (terrain.length ? terrain.slice(0, 3) : t.slice(0, 1)).join(" · ") || "Stand";
 }
+// Shot cone: wedge from the stand toward where modeled deer traffic passes within gun range.
+const CONE_M = 110;
+function offset(ll, bearing, m) {
+  const b = bearing * Math.PI / 180, lat = ll[0] * Math.PI / 180;
+  return [ll[0] + m * Math.cos(b) / 111320, ll[1] + m * Math.sin(b) / (111320 * Math.cos(lat))];
+}
+function drawCone(ll, shot) {
+  clearCone();
+  if (!shot) return;
+  const pts = [ll], steps = Math.max(4, Math.round(shot.width / 5));
+  for (let i = 0; i <= steps; i++) pts.push(offset(ll, shot.start + shot.width * i / steps, CONE_M));
+  const warn = shot.warn.length > 0, color = warn ? "#d97706" : "#f2570c";
+  const arc = [];
+  const dm = shot.dist_yd / 1.0936;
+  for (let i = 0; i <= steps; i++) arc.push(offset(ll, shot.start + shot.width * i / steps, dm));
+  layers.cone = L.layerGroup([
+    L.polygon(pts, { color, weight: 2, fillColor: color, fillOpacity: .22, interactive: false }),
+    L.polyline(arc, { color, weight: 2, dashArray: "4 5", interactive: false }),
+  ]).addTo(map);
+}
+function clearCone() { if (layers.cone) { map.removeLayer(layers.cone); layers.cone = null; } }
+
 function renderList(s) {
   if (!AREA) return;
   layers.markers.clearLayers();
@@ -525,6 +549,7 @@ function renderList(s) {
       const p = f.properties, ll = [f.geometry.coordinates[1], f.geometry.coordinates[0]], fit = windFit(p, s);
       const m = L.marker(ll, { zIndexOffset: 1000, icon: L.divIcon({ className: "", html: `<div class="mk spot">★</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) })
         .bindPopup(popup(p, ll, fit, true)).addTo(layers.markers);
+      m.on("popupopen", () => drawCone(ll, p.shot));  // cone stays after the popup closes, until another pin is opened
       frag.appendChild(mkRow("spot", "★", `${esc(p.name)} ${pctBadge(p.percentile)}`,
         p.overlap ? `overlaps Pin ${p.nearest_pin}` : p.nearest_pin ? `Pin ${p.nearest_pin} is ${p.nearest_pin_yd.toLocaleString()} yd away` : "",
         `<span class="tag ${fit.cls}">${esc(fit.txt)}</span>`, () => { map.setView(ll, 15); m.openPopup(); }));
@@ -537,6 +562,7 @@ function renderList(s) {
     const ll = [f.geometry.coordinates[1], f.geometry.coordinates[0]];
     const m = L.marker(ll, { zIndexOffset: (fit.cls === "ok" ? 500 : 0) - i, icon: L.divIcon({ className: "", html: `<div class="mk ${fit.cls}">${p.rank}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }) })
       .bindPopup(popup(p, ll, fit, false)).addTo(layers.markers);
+    m.on("popupopen", () => drawCone(ll, p.shot));  // cone stays after the popup closes, until another pin is opened
     frag.appendChild(mkRow(fit.cls, p.rank, esc(tags(p)),
       `${p.walk_mi} mi walk · ${esc(p.park_on)} · best wind ${p.best_wind.join("/")}`,
       `<span class="tag ${fit.cls}">${esc(fit.txt)}</span>`, () => { map.setView(ll, 15); m.openPopup(); }));
