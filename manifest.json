@@ -1,0 +1,23 @@
+{
+ "areas": [
+  {
+   "key": "bankhead",
+   "name": "Bankhead NF / Black Warrior WMA",
+   "lat": 34.23,
+   "lon": -87.365
+  },
+  {
+   "key": "skyline",
+   "name": "James D. Martin-Skyline WMA",
+   "lat": 34.865,
+   "lon": -86.07
+  },
+  {
+   "key": "cahaba",
+   "name": "William R. Ireland Sr.-Cahaba River WMA",
+   "lat": 33.155,
+   "lon": -87.005
+  }
+ ],
+ "kdf_iters": 250000
+}
