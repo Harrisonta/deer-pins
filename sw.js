@@ -1,6 +1,6 @@
 // Offline support for the woods: app + encrypted pin data stay cached, map tiles you've viewed stay cached,
 // weather is network-first with the last good copy as fallback.
-const APP = "dp-app-v2";
+const APP = "dp-app-v3";
 const TILES = "dp-tiles-v1";
 const MAX_TILES = 4000;
 
@@ -34,8 +34,8 @@ self.addEventListener("fetch", e => {
       if (r.ok) caches.open(APP).then(c => c.put(e.request, r.clone()));
       return r;
     }).catch(() => caches.match(e.request)));
-  } else if (u.origin === location.origin && (e.request.mode === "navigate" || /\/(index\.html|manifest\.json)?$/.test(u.pathname))) {
-    // The page and manifest: network first so updates show up immediately; cache when offline.
+  } else if (u.origin === location.origin && (e.request.mode === "navigate" || /\/(index\.html|manifest\.json)?$/.test(u.pathname) || /\/data\/[^/]+\.bin$/.test(u.pathname))) {
+    // Page, manifest and pin data: network first so updates (and passphrase changes) apply at once; cache when offline.
     e.respondWith(fetch(e.request).then(r => { if (r.ok) caches.open(APP).then(c => c.put(e.request, r.clone())); return r; })
       .catch(() => caches.match(e.request).then(h => h || caches.match("index.html"))));
   } else if (u.origin === location.origin || /cdnjs|fonts\.g/.test(u.host)) {
