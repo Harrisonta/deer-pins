@@ -25,12 +25,14 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
+    --icon-filter: invert(1);
     --bg: #0f130f; --panel: #161b16; --ink: #e6ebe2; --muted: #98a293; --line: #283028; --chip: #212821;
     --blaze: #ff6f22; --blaze-ink: #140a03; --pine: #6fbf85; --amber: #f0b354; --slate: #7c857e; --sky: #6aa0ff;
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
+  --icon-filter: invert(1);
   --bg: #0f130f; --panel: #161b16; --ink: #e6ebe2; --muted: #98a293; --line: #283028; --chip: #212821;
   --blaze: #ff6f22; --blaze-ink: #140a03; --pine: #6fbf85; --amber: #f0b354; --slate: #7c857e; --sky: #6aa0ff;
   color-scheme: dark;
@@ -56,7 +58,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 /* ---------- app shell */
 #app { display: grid; grid-template-columns: 400px 1fr; height: 100%; }
 #map { height: 100%; background: var(--chip); }
-#side { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border-right: 1px solid var(--line); }
+#side { display: flex; flex-direction: column; min-height: 0; min-width: 0; background: var(--panel); border-right: 1px solid var(--line); }
 .bar { display: flex; align-items: center; gap: 8px; padding: calc(10px + var(--safe-top)) 16px 10px; border-bottom: 1px solid var(--line); }
 .brand { font: 700 22px/1 var(--display); text-transform: uppercase; letter-spacing: .4px; white-space: nowrap; }
 .brand span { color: var(--blaze); }
@@ -84,6 +86,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .compass { width: 64px; height: 64px; }
 .rating { font: 700 26px/1 var(--display); text-transform: uppercase; letter-spacing: .4px; }
 .r-ex { color: var(--pine); } .r-good { color: var(--pine); } .r-fair { color: var(--amber); } .r-poor { color: var(--slate); }
+.cond > div { min-width: 0; }
 .facts { display: flex; flex-wrap: wrap; gap: 4px 12px; font: 12.5px/1.4 var(--mono); color: var(--muted); margin-top: 4px; }
 .facts b { color: var(--ink); font-weight: 500; }
 .why { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--muted); }
@@ -113,6 +116,15 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .leaflet-popup-content { margin: 12px 14px; width: 300px !important; max-width: 76vw; font: 13px/1.45 var(--body); }
 .leaflet-popup-content a { color: var(--blaze); }
 .leaflet-container { font-family: var(--body); }
+/* Dark topo: invert the light USGS topo so contours read on a dark ground. Satellite is left alone. */
+#map.dark-tiles .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.88) saturate(.7); }
+.leaflet-bar a, .leaflet-bar a:hover, .leaflet-control-layers { background: var(--panel); color: var(--ink); border-color: var(--line); }
+.leaflet-control-layers-toggle { filter: var(--icon-filter, none); }
+.leaflet-control-scale-line { background: color-mix(in srgb, var(--panel) 80%, transparent); color: var(--ink); border-color: var(--ink); }
+.leaflet-control-attribution { background: color-mix(in srgb, var(--panel) 75%, transparent) !important; color: var(--muted); }
+.leaflet-control-attribution a { color: var(--muted); }
+#theme { flex: 0 0 auto; width: 36px; height: 34px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; display: grid; place-items: center; }
+#theme svg { width: 18px; height: 18px; }
 .pop h3 { margin: 0 0 4px; font: 700 20px/1.1 var(--display); text-transform: uppercase; letter-spacing: .3px; }
 .pop ul { margin: 6px 0; padding-left: 18px; } .pop li { margin: 2px 0; }
 .pop .k { color: var(--muted); } .pop .warn { color: var(--amber); }
@@ -126,13 +138,14 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .b-top { background: var(--pine); } .b-mid { background: var(--amber); } .b-low { background: var(--slate); }
 
 @media (max-width: 760px) {
-  #app { grid-template-columns: 1fr; grid-template-rows: 48% 52%; }
+  #app { grid-template-columns: minmax(0, 1fr); grid-template-rows: 48% 52%; }
   #map { grid-row: 1; } #side { grid-row: 2; border-right: 0; border-top: 1px solid var(--line); }
   .bar { padding-top: 8px; } .brand { font-size: 19px; }
   .cond { grid-template-columns: 52px 1fr; } .compass { width: 52px; height: 52px; } .rating { font-size: 22px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
+<script>try { const t = localStorage.getItem("dp.theme"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t; } catch {}</script>
 </head>
 <body>
 <div id="lock">
@@ -150,6 +163,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
     <div class="bar">
       <div class="brand">Deer <span>Pins</span></div>
       <select id="area" aria-label="Hunting area"></select>
+      <button id="theme" type="button" aria-label="Theme: auto" title="Theme: auto"></button>
     </div>
     <div id="scroll">
       <section class="plan" aria-label="Pick a sit">
@@ -179,6 +193,33 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 
 <script>
 "use strict";
+// ------------------------------------------------------------------ theme (auto / dark / light)
+const THEME_ICONS = {
+  auto: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
+  dark: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 14.5A8.5 8.5 0 0 1 9.5 3.5a8.5 8.5 0 1 0 11 11z"/></svg>',
+  light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>',
+};
+const darkMQ = matchMedia("(prefers-color-scheme: dark)");
+let themeMode = (() => { try { return localStorage.getItem("dp.theme") || "auto"; } catch { return "auto"; } })();
+const isDark = () => themeMode === "dark" || (themeMode === "auto" && darkMQ.matches);
+let baseIsTopo = true;
+function applyTheme() {
+  const root = document.documentElement;
+  if (themeMode === "auto") delete root.dataset.theme; else root.dataset.theme = themeMode;
+  const b = document.getElementById("theme");
+  if (b) { b.innerHTML = THEME_ICONS[themeMode]; b.title = b.ariaLabel = `Theme: ${themeMode} (tap to change)`; }
+  document.querySelector('meta[name="theme-color"]').content = isDark() ? "#161b16" : "#f7f8f4";
+  document.getElementById("map")?.classList.toggle("dark-tiles", isDark() && baseIsTopo);
+}
+darkMQ.addEventListener?.("change", applyTheme);
+document.addEventListener("DOMContentLoaded", () => {
+  applyTheme();
+  document.getElementById("theme").onclick = () => {
+    themeMode = { auto: "dark", dark: "light", light: "auto" }[themeMode];
+    try { themeMode === "auto" ? localStorage.removeItem("dp.theme") : localStorage.setItem("dp.theme", themeMode); } catch {}
+    applyTheme();
+  };
+});
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { localStorage.setItem(k, v); } catch {} },
@@ -244,6 +285,7 @@ function initMap() {
   const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19, attribution: "Esri, Maxar" });
   const hyb = L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}", { maxZoom: 18, maxNativeZoom: 16, attribution: "USGS" });
   topo.addTo(map);
+  map.on("baselayerchange", e => { baseIsTopo = e.layer === topo; applyTheme(); });
   L.control.layers({ "Topo": topo, "Satellite": sat, "Satellite + contours": hyb }, null, { position: "topright" }).addTo(map);
   L.control.scale({ imperial: true, metric: false }).addTo(map);
   map.on("popupopen", e => e.popup.getElement().querySelectorAll(".showbetter").forEach(a => a.onclick = ev => {
