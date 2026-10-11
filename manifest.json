@@ -17,6 +17,18 @@
    "name": "William R. Ireland Sr.-Cahaba River WMA",
    "lat": 33.155,
    "lon": -87.005
+  },
+  {
+   "key": "shoalcreek",
+   "name": "Talladega NF - Shoal Creek",
+   "lat": 33.695,
+   "lon": -85.59
+  },
+  {
+   "key": "talladega",
+   "name": "Talladega NF - Talladega/Cheaha",
+   "lat": 33.345,
+   "lon": -86.005
   }
  ],
  "kdf_iters": 250000
